@@ -20,13 +20,13 @@ fun gameLoop() {
     val controller = mainSpawn.room.controller
     if (controller != null && controller.level >= 2) {
         when (controller.room.find(FIND_MY_STRUCTURES).count { it.structureType == STRUCTURE_EXTENSION }) {
-            0 -> controller.room.createConstructionSite(29, 27, STRUCTURE_EXTENSION)
-            1 -> controller.room.createConstructionSite(28, 27, STRUCTURE_EXTENSION)
-            2 -> controller.room.createConstructionSite(27, 27, STRUCTURE_EXTENSION)
-            3 -> controller.room.createConstructionSite(26, 27, STRUCTURE_EXTENSION)
-            4 -> controller.room.createConstructionSite(25, 27, STRUCTURE_EXTENSION)
-            5 -> controller.room.createConstructionSite(24, 27, STRUCTURE_EXTENSION)
-            6 -> controller.room.createConstructionSite(23, 27, STRUCTURE_EXTENSION)
+            0 -> controller.room.createConstructionSite(30, 17, STRUCTURE_EXTENSION)
+            1 -> controller.room.createConstructionSite(31, 17, STRUCTURE_EXTENSION)
+            2 -> controller.room.createConstructionSite(32, 17, STRUCTURE_EXTENSION)
+            3 -> controller.room.createConstructionSite(33, 17, STRUCTURE_EXTENSION)
+            4 -> controller.room.createConstructionSite(34, 17, STRUCTURE_EXTENSION)
+            5 -> controller.room.createConstructionSite(35, 17, STRUCTURE_EXTENSION)
+            6 -> controller.room.createConstructionSite(36, 17, STRUCTURE_EXTENSION)
         }
     }
 
@@ -82,7 +82,7 @@ private fun spawnCreeps(
         creeps.none { it.memory.role == Role.UPGRADER } -> Role.UPGRADER
 
         spawn.room.find(FIND_MY_CONSTRUCTION_SITES).isNotEmpty() &&
-                creeps.count { it.memory.role == Role.HARVESTER } < 2 -> Role.BUILDER
+                creeps.count { it.memory.role == Role.BUILDER } < 2 -> Role.BUILDER
 
         else -> return
     }

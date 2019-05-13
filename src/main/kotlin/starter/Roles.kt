@@ -12,14 +12,22 @@ enum class Role {
 }
 
 fun Creep.upgrade(controller: StructureController) {
-    if (carry.energy == 0) {
+    if (memory.building && carry.energy == 0) {
+        memory.building = false
+        say("🔄 harvest")
+    }
+    if (!memory.building && carry.energy == carryCapacity) {
+        memory.building = true
+        say("🚧 build")
+    }
+    if (memory.building) {
+        if (upgradeController(controller) == ERR_NOT_IN_RANGE) {
+            moveTo(controller.pos)
+        }
+    } else {
         val sources = room.find(FIND_SOURCES)
         if (harvest(sources[0]) == ERR_NOT_IN_RANGE) {
             moveTo(sources[0].pos)
-        }
-    } else {
-        if (upgradeController(controller) == ERR_NOT_IN_RANGE) {
-            moveTo(controller.pos)
         }
     }
 }
@@ -61,15 +69,21 @@ fun Creep.build(assignedRoom: Room = this.room) {
 }
 
 fun Creep.harvest(fromRoom: Room = this.room, toRoom: Room = this.room) {
+    val sites = this.room.find(FIND_CONSTRUCTION_SITES)
+    val targets = toRoom.find(FIND_MY_STRUCTURES)
+            .filter { (it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN) }
+            .filter { it.unsafeCast<EnergyContainer>().energy < it.unsafeCast<EnergyContainer>().energyCapacity }
+    if (carry.energy == carryCapacity && targets.isNullOrEmpty()) {
+        if (build(sites[0]) == ERR_NOT_IN_RANGE) {
+            moveTo(sites[0].pos)
+        }
+    }
     if (carry.energy < carryCapacity) {
         val sources = fromRoom.find(FIND_SOURCES)
         if (harvest(sources[0]) == ERR_NOT_IN_RANGE) {
             moveTo(sources[0].pos)
         }
     } else {
-        val targets = toRoom.find(FIND_MY_STRUCTURES)
-                .filter { (it.structureType == STRUCTURE_EXTENSION || it.structureType == STRUCTURE_SPAWN) }
-                .filter { it.unsafeCast<EnergyContainer>().energy < it.unsafeCast<EnergyContainer>().energyCapacity }
 
         if (targets.isNotEmpty()) {
             if (transfer(targets[0], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
