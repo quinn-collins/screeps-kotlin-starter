@@ -2,18 +2,23 @@ package starter
 
 import screeps.api.*
 import screeps.api.structures.StructureSpawn
+import screeps.utils.isEmpty
+import screeps.utils.memory.memory
+import screeps.utils.unsafe.delete
+import screeps.utils.unsafe.jsObject
 
 
 fun gameLoop() {
     val mainSpawn: StructureSpawn = Game.spawns.values.firstOrNull() ?: return
-    spawnCreeps(mainSpawn)
+    spawnCreeps(Game.creeps.values, mainSpawn)
+    houseKeeping(Game.creeps)
 }
 
-enum class Roles(val body: Array<BodyPartConstant>, val maxSize: Int = 0) {
+enum class Role(val body: Array<BodyPartConstant>, val maxSize: Int = 0) {
 
-    BASIC_WORKER(arrayOf(WORK, CARRY, MOVE), maxSize = 5),
+    BASIC_WORKER(arrayOf(WORK, CARRY, MOVE), maxSize = 1),
 
-    MINER(arrayOf(WORK, WORK, MOVE), maxSize = 0),
+    MINER(arrayOf(WORK, WORK, MOVE), maxSize = 1),
 
     MINER_BIG(arrayOf(
             WORK,
@@ -33,27 +38,35 @@ enum class Roles(val body: Array<BodyPartConstant>, val maxSize: Int = 0) {
             MOVE,
             MOVE), maxSize = 0),
 
-    HAULER(arrayOf(CARRY, CARRY, MOVE), maxSize = 0),
+    HAULER(arrayOf(CARRY, CARRY, MOVE), maxSize = 1),
 
-    SCOUT(arrayOf(MOVE), maxSize = 0),
+    SCOUT(arrayOf(MOVE), maxSize = 1),
 
-    CLAIMER(arrayOf(CLAIM, MOVE), maxSize = 0);
+    CLAIMER(arrayOf(CLAIM, MOVE), maxSize = 1),
+
+    UNASSIGNED(arrayOf(), maxSize = 0);
 }
 
-private fun spawnCreeps(spawn: StructureSpawn) {
-    val roles = Roles.values()
-    for (role in roles) {
-        if (spawn.room.energyAvailable < role.body.sumBy { BODYPART_COST[it]!! }) {
-            return
-        }
-        val newName = "${role.name}_${Game.time}"
-        val code = spawn.spawnCreep(role.body, newName, options {})
+private fun spawnCreeps(creeps: Array<Creep> ,spawn: StructureSpawn) {
 
-        when (code) {
-            OK -> console.log("spawning $newName with body ${role.body}")
-            ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
-            else -> console.log("unhandled error code $code")
+    for (role in Role.values()) {
+        if(creeps.count {it.memory.role.toString() == role.name} < role.maxSize) {
+
+            if (spawn.room.energyAvailable < role.body.sumBy { BODYPART_COST[it]!! }) {
+                return
+            }
+            val newName = "${role.name}_${Game.time}"
+            val code = spawn.spawnCreep(role.body, newName, options {
+                memory = jsObject<CreepMemory> { this.role = role }
+            })
+
+            when (code) {
+                OK -> console.log("spawning $newName with body ${role.body}")
+                ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
+                else -> console.log("unhandled error code $code")
+            }
         }
+
 
     }
 }
@@ -154,13 +167,17 @@ private fun spawnCreeps(spawn: StructureSpawn) {
 //    }
 //}
 //
-//private fun houseKeeping(creeps: Record<String, Creep>) {
-//    if (Game.creeps.isEmpty()) return  // this is needed because Memory.creeps is undefined
-//
-//    for ((creepName, _) in Memory.creeps) {
-//        if (creeps[creepName] == null) {
-//            console.log("deleting obsolete memory entry for creep $creepName")
-//            delete(Memory.creeps[creepName])
-//        }
-//    }
-//}
+private fun houseKeeping(creeps: Record<String, Creep>) {
+    if (Game.creeps.isEmpty()) return  // this is needed because Memory.creeps is undefined
+
+    for ((creepName, _) in Memory.creeps) {
+        if (creeps[creepName] == null) {
+            console.log("deleting obsolete memory entry for creep $creepName")
+            delete(Memory.creeps[creepName])
+        }
+    }
+}
+
+var CreepMemory.building: Boolean by memory { false }
+var CreepMemory.pause: Int by memory { 0 }
+var CreepMemory.role by memory(Role.UNASSIGNED)
