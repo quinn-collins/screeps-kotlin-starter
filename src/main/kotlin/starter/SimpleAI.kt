@@ -28,6 +28,10 @@ fun gameLoop() {
             5 -> controller.room.createConstructionSite(35, 17, STRUCTURE_EXTENSION)
             6 -> controller.room.createConstructionSite(36, 17, STRUCTURE_EXTENSION)
         }
+    } else if (controller != null && controller.level >= 3) {
+        when(controller.room.find(FIND_MY_STRUCTURES).count { it.structureType == STRUCTURE_TOWER}) {
+            0 -> controller.room.createConstructionSite(35, 24, STRUCTURE_TOWER)
+        }
     }
 
     //spawn a big creep if we have plenty of energy
