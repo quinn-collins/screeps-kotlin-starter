@@ -24,7 +24,7 @@ val screepsPassword: String? by project
 val screepsToken: String? by project
 val screepsHost: String? by project
 val screepsBranch: String? by project
-val branch = screepsBranch ?: "kotlin-start"
+val branch = screepsBranch ?: "kotlin-quinn"
 val host = screepsHost ?: "https://screeps.com"
 
 fun String.encodeBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
