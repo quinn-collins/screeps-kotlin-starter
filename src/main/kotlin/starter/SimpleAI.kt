@@ -64,7 +64,7 @@ enum class Role(val body: Array<BodyPartConstant>, val maxSize: Int = 0) {
 private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     for (role in Role.values()) {
-        if(creeps.count {it.memory.role == role} < role.maxSize) {
+        if (creeps.count { it.memory.role == role } < role.maxSize) {
 
             if (spawn.room.energyAvailable < role.body.sumBy { BODYPART_COST[it]!! }) {
                 return
@@ -75,10 +75,11 @@ private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
             })
 
             when (val code = spawn.spawnCreep(role.body, newName, options {
-                    memory = jsObject<CreepMemory> {
-                        this.role = role
-                        this.mission = Mission.UNASSIGNED }
-                })) {
+                memory = jsObject<CreepMemory> {
+                    this.role = role
+                    this.mission = Mission.UNASSIGNED
+                }
+            })) {
                 OK -> console.log("spawning $newName with body ${role.body}")
                 ERR_BUSY, ERR_NOT_ENOUGH_ENERGY -> run { } // do nothing
                 else -> console.log("unhandled error code $code")
@@ -98,48 +99,46 @@ enum class Mission {
     HEAL,
     UNASSIGNED
 }
+
 fun assignMission(creeps: Array<Creep>, spawn: StructureSpawn) {
-    for(creep in creeps) {
-        if(creep.memory.mission == Mission.UNASSIGNED) {
-            if(spawn.energy < spawn.energyCapacity) {
-                creep.memory.mission = Mission.SPAWNER
-            } else {
-                creep.memory.mission = Mission.CONTROLLER
-            }
-        } else {
-            if( creep.carry.energy == 0) {
-                creep.memory.mission = Mission.HARVEST
-            } else if ( creep.carry.energy == creep.carryCapacity) {
-                creep.memory.mission = Mission.UNASSIGNED
-            }
+    for (creep in creeps) {
+
+        when(creep.memory.mission == Mission.UNASSIGNED) {
+            creep.carry.energy == 0 -> creep.memory.mission = Mission.HARVEST
+            spawn.energy < spawn.energyCapacity -> creep.memory.mission = Mission.SPAWNER
+            else -> creep.memory.mission = Mission.CONTROLLER
+
+        }
+        when( creep.memory.mission != Mission.UNASSIGNED) {
+            creep.carry.energy == creep.carryCapacity && creep.memory.mission == Mission.HARVEST -> creep.memory.mission = Mission.UNASSIGNED
         }
     }
 }
 
 fun runCreepWork(creeps: Record<String, Creep>, spawn: StructureSpawn) {
-   for((_, creep) in creeps) {
-       if(creep.memory.mission == Mission.HARVEST) {
-           val sources = spawn.room.find(FIND_SOURCES)
-           if (creep.moveTo(sources[0]) == ERR_NOT_IN_RANGE) {
-               creep.moveTo(sources[0].pos)
-           } else {
-               creep.harvest(sources[0])
-           }
+    for ((_, creep) in creeps) {
 
-       } else if (creep.memory.mission == Mission.SPAWNER){
-          if(creep.moveTo(spawn.pos) == ERR_NOT_IN_RANGE) {
-             creep.moveTo(spawn.pos)
-          } else {
-              creep.transfer(spawn, RESOURCE_ENERGY)
-          }
-       } else {
-           if(creep.moveTo(spawn.room.controller!!) == ERR_NOT_IN_RANGE) {
-              creep.moveTo(spawn.room.controller!!)
-           } else {
-               creep.transfer(spawn.room.controller!!, RESOURCE_ENERGY)
-           }
-       }
-   }
+        val controller = spawn.room.controller
+        val sources = spawn.room.find(FIND_SOURCES)
+
+        when(creep.memory.mission == Mission.HARVEST) {
+            (creep.carry.energy == creep.carryCapacity) -> creep.memory.mission = Mission.UNASSIGNED
+            (creep.harvest(sources[0]) == ERR_NOT_IN_RANGE) -> creep.moveTo(sources[0].pos)
+            (creep.harvest(sources[0]) != ERR_NOT_IN_RANGE) -> creep.harvest(sources[0])
+        }
+        when(creep.memory.mission == Mission.SPAWNER) {
+            (spawn.energy == spawn.energyCapacity) -> creep.memory.mission = Mission.UNASSIGNED
+            (creep.transfer(spawn, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) -> (creep.moveTo(spawn.pos))
+            (creep.transfer(spawn, RESOURCE_ENERGY) != ERR_NOT_IN_RANGE) -> (creep.transfer(spawn, RESOURCE_ENERGY))
+        }
+        when(creep.memory.mission == Mission.CONTROLLER) {
+            (spawn.energy < spawn.energyCapacity) -> creep.memory.mission = Mission.UNASSIGNED
+            (creep.transfer(controller!!, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) -> (creep.moveTo(controller.pos))
+            (creep.transfer(controller!!, RESOURCE_ENERGY) != ERR_NOT_IN_RANGE) -> (creep.transfer(controller!!, RESOURCE_ENERGY))
+        }
+
+    }
 }
+
 var CreepMemory.role by memory(Role.UNASSIGNED)
 var CreepMemory.mission by memory(Mission.UNASSIGNED)
