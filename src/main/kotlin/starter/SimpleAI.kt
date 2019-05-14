@@ -13,7 +13,8 @@ fun gameLoop() {
 
     houseKeeping(Game.creeps)
     spawnCreeps(Game.creeps.values, mainSpawn)
-    assignMission()
+    assignMission(Game.creeps.values)
+    runCreepWork(Game.creeps.values, mainSpawn.room)
 }
 
 private fun houseKeeping(creeps: Record<String, Creep>) {
@@ -57,10 +58,10 @@ enum class Role(val body: Array<BodyPartConstant>, val maxSize: Int = 0) {
 
     CLAIMER(arrayOf(CLAIM, MOVE), maxSize = 0),
 
-    UNASSIGNED(arrayOf(), maxSize = 0);
+    UNASSIGNED(arrayOf(), maxSize = 0)
 }
 
-private fun spawnCreeps(creeps: Array<Creep> ,spawn: StructureSpawn) {
+private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
 
     for (role in Role.values()) {
         if(creeps.count {it.memory.role == role} < role.maxSize) {
@@ -70,7 +71,7 @@ private fun spawnCreeps(creeps: Array<Creep> ,spawn: StructureSpawn) {
             }
             val newName = "${role.name}_${Game.time}"
             val code = spawn.spawnCreep(role.body, newName, options {
-                memory = jsObject<CreepMemory> { this.role = role }
+                memory = jsObject<CreepMemory> { this.role = role; this.mission = Mission.UNASSIGNED }
             })
 
             when (code) {
@@ -85,8 +86,31 @@ private fun spawnCreeps(creeps: Array<Creep> ,spawn: StructureSpawn) {
     }
 }
 
-fun assignMission() {
+enum class Mission() {
+    HARVEST,
+    SPAWNER,
+    CONTROLLER,
+    CONSTRUCTION,
+    REPAIR,
+    HEAL,
+    UNASSIGNED
+}
+fun assignMission(creeps: Array<Creep>) {
+    for(creep in creeps) {
+        if(creep.carry.energy == 0) {
+            creep.memory.mission = Mission.HARVEST
+        }
+    }
+}
 
+fun runCreepWork(creeps: Array<Creep>, room: Room) {
+    val sources = room.find(FIND_SOURCES)
+   for(creep in creeps) {
+        val sources = room.find(FIND_SOURCES)
+        if (sources[0] == ERR_NOT_IN_RANGE) {
+            moveTo(sources[0].pos)
+        }
+   }
 }
 
 //    val mainSpawn: StructureSpawn = Game.spawns.values.firstOrNull() ?: return
@@ -188,3 +212,4 @@ fun assignMission() {
 var CreepMemory.building: Boolean by memory { false }
 var CreepMemory.pause: Int by memory { 0 }
 var CreepMemory.role by memory(Role.UNASSIGNED)
+var CreepMemory.mission by memory(Mission.UNASSIGNED)
