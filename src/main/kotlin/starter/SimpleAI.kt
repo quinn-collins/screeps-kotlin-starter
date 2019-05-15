@@ -68,10 +68,12 @@ enum class Role(val body: Array<BodyPartConstant>, val maxSize: Int = 0) {
 }
 
 private fun spawnCreeps(creeps: Array<Creep>, spawn: StructureSpawn) {
-    val sources = spawn.room.find(FIND_SOURCES)
-    val source0 = creeps.count { creep -> creep.memory.assignedSource == sources[0].id }
-    val source1 = creeps.count { creep -> creep.memory.assignedSource == sources[1].id }
-    val assignedSource = if(source0 < source1) sources[0].id else sources[1].id
+    val sources = spawn.room.find(FIND_SOURCES).sort { a,b ->
+        (a.pos.x - b.pos.x) * (a.pos.x - b.pos.x)
+         + (a.pos.y - b.pos.y) * (a.pos.y - b.pos.y)}
+    val creepsWithSource1 = creeps.count { creep -> creep.memory.assignedSource == sources[0] }
+    val creepsWithSource2 = creeps.count { creep -> creep.memory.assignedSource == sources[1].id }
+    val assignedSource = if(creepsWithSource1 < creepsWithSource2) sources[0].id else sources[1].id
 
     for (role in Role.values()) {
         if (creeps.count { it.memory.role == role } < role.maxSize) {
